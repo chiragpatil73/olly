@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Question, Under the Stars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Space+Grotesk:wght@400;500;600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0b1026;
+    --bg-deep2:#141a3a;
+    --rose:#ff6f9c;
+    --gold:#ffd166;
+    --text-light:#f5f3ff;
+    --muted:#9aa1c9;
+    --card:rgba(20,26,58,0.72);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:radial-gradient(ellipse at top, #171d45 0%, var(--bg-deep) 55%, #06081a 100%);
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--text-light);
+    overflow-x:hidden;
+    min-height:100vh;
+    position:relative;
+  }
+  canvas#stars{
+    position:fixed; inset:0; z-index:0; display:block;
+  }
+  .scene{
+    position:relative; z-index:2;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:32px 18px;
+  }
+  .screen{ display:none; width:100%; max-width:560px; }
+  .screen.active{ display:block; animation:rise .7s cubic-bezier(.2,.9,.2,1) both; }
+  @keyframes rise{ from{opacity:0; transform:translateY(24px);} to{opacity:1; transform:translateY(0);} }
+
+  .eyebrow{
+    font-family:'Caveat', cursive;
+    font-size:1.5rem;
+    color:var(--gold);
+    letter-spacing:.02em;
+    margin:0 0 8px;
+    display:block;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-style:italic;
+    font-size:clamp(1.9rem, 6vw, 2.7rem);
+    line-height:1.2;
+    margin:0 0 10px;
+  }
+  p.sub{ color:var(--muted); font-size:1rem; margin:0 0 28px; line-height:1.55; }
+
+  .card{
+    background:var(--card);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:24px;
+    padding:40px 32px;
+    backdrop-filter:blur(10px);
+    box-shadow:0 30px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,111,156,0.04) inset;
+  }
+
+  /* centered, cute framing for the ask screen only */
+  #screen-ask .card{ text-align:center; }
+  #screen-ask .eyebrow, #screen-ask p.sub{ margin-left:auto; margin-right:auto; }
+  .heart-row{
+    display:flex; justify-content:center; gap:10px;
+    font-size:1.4rem; margin-bottom:6px;
+    filter:drop-shadow(0 2px 10px rgba(255,111,156,0.35));
+  }
+  .heart-row span{ animation:pulse 2.4s ease-in-out infinite; }
+  .heart-row span:nth-child(2){ animation-delay:.3s; }
+  .heart-row span:nth-child(3){ animation-delay:.6s; }
+  @keyframes pulse{
+    0%,100%{ transform:scale(1); opacity:.75; }
+    50%{ transform:scale(1.18); opacity:1; }
+  }
+  @keyframes wobble{
+    0%{ transform:rotate(0deg) scale(1); }
+    30%{ transform:rotate(-8deg) scale(1.05); }
+    60%{ transform:rotate(6deg) scale(1.05); }
+    100%{ transform:rotate(0deg) scale(1); }
+  }
+  .heart-pop{
+    position:absolute; pointer-events:none;
+    font-size:1rem; color:var(--rose);
+    animation:popfloat .9s ease-out forwards;
+    z-index:5;
+  }
+  @keyframes popfloat{
+    0%{ opacity:1; transform:translateY(0) scale(0.8); }
+    100%{ opacity:0; transform:translateY(-46px) scale(1.15); }
+  }
+
+  /* ---- question screen ---- */
+  .stage{
+    position:relative;
+    height:170px;
+    margin-top:12px;
+  }
+  .btnrow{
+    position:relative;
+    display:flex; gap:18px; align-items:center; justify-content:center;
+    height:100%;
+    width:100%;
+  }
+  .btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:1rem;
+    border:none;
+    border-radius:999px;
+    padding:16px 32px;
+    line-height:1;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-yes{
+    background:linear-gradient(135deg, var(--rose), #ff9776);
+    color:#26102a;
+    box-shadow:0 10px 24px rgba(255,111,156,0.35);
+    transform-origin:center;
+  }
+  .btn-yes:hover{ transform:scale(1.06); }
+  .btn-no{
+    background:rgba(255,255,255,0.04);
+    color:var(--muted);
+    border:1px solid rgba(255,255,255,0.2);
+    position:absolute;
+    left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    transform-origin:center;
+  }
+  .btn-no.dodging{ animation:wobble .35s ease; }
+  .hint{
+    text-align:center;
+    color:var(--gold);
+    font-size:.88rem;
+    margin-top:20px;
+    font-style:italic;
+    min-height:1.3em;
+    opacity:.9;
+  }
+  @media (max-width:420px){
+    .card{ padding:32px 22px; }
+    .stage{ height:190px; }
+  }
+
+  /* ---- planner screen ---- */
+  .field{ margin-bottom:22px; }
+  .field label{
+    display:block;
+    font-size:.8rem;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-bottom:10px;
+  }
+  .types{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+  }
+  .type-opt{
+    border:1px solid rgba(255,255,255,0.14);
+    background:rgba(255,255,255,0.03);
+    border-radius:14px;
+    padding:14px 8px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s, transform .15s, box-shadow .15s;
+    font-size:.85rem;
+    color:var(--text-light);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px;
+    min-height:74px;
+  }
+  .type-opt .emoji{ display:block; font-size:1.5rem; line-height:1; }
+  .type-opt:hover{ transform:translateY(-2px); }
+  .type-opt.selected{
+    border-color:var(--rose);
+    background:rgba(255,111,156,0.14);
+    box-shadow:0 6px 18px rgba(255,111,156,0.2);
+  }
+  @media (max-width:420px){
+    .types{ grid-template-columns:repeat(2, 1fr); }
+  }
+  input[type="date"], input[type="time"], textarea{
+    width:100%;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:12px;
+    padding:13px 14px;
+    color:var(--text-light);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:.95rem;
+  }
+  textarea{ resize:vertical; min-height:70px; }
+  .row2{ display:flex; gap:12px; }
+  .row2 > div{ flex:1; }
+  .confirm-btn{
+    width:100%;
+    margin-top:6px;
+    background:linear-gradient(135deg, var(--gold), var(--rose));
+    color:#26102a;
+    border:none;
+    border-radius:999px;
+    padding:16px;
+    font-weight:600;
+    font-size:1rem;
+    cursor:pointer;
+  }
+  .confirm-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  /* ---- summary screen ---- */
+  .summary-box{
+    background:rgba(255,255,255,0.04);
+    border:1px dashed rgba(255,255,255,0.25);
+    border-radius:14px;
+    padding:20px;
+    font-size:.95rem;
+    line-height:1.7;
+    color:var(--text-light);
+    margin-bottom:22px;
+  }
+  .summary-box b{ color:var(--gold); }
+  .send-row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .send-row a, .send-row button{
+    flex:1;
+    text-align:center;
+    text-decoration:none;
+    padding:14px;
+    border-radius:999px;
+    font-weight:600;
+    font-size:.92rem;
+    cursor:pointer;
+    border:none;
+  }
+  .send-whatsapp{ background:#25D366; color:#08240f; }
+  .send-email{ background:rgba(255,255,255,0.1); color:var(--text-light); border:1px solid rgba(255,255,255,0.25); }
+  .copied-msg{ text-align:center; font-size:.8rem; color:var(--gold); margin-top:10px; min-height:1em; }
+
+  @media (prefers-reduced-motion: reduce){
+    .btn-no{ transition:none !important; }
+    .screen.active{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="scene">
+
+  <!-- SCREEN 1: the question -->
+  <section class="screen active" id="screen-ask">
+    <div class="card">
+      <div class="heart-row"><span>✦</span><span>♡</span><span>✦</span></div>
+      <span class="eyebrow">a small question, under a big sky</span>
+      <h1 id="askHeadline">Would you like to go on a date with me?</h1>
+      <p class="sub">Take your time. Well — take your time on one of these buttons, anyway.</p>
+
+      <div class="stage">
+        <div class="btnrow">
+          <button class="btn btn-yes" id="yesBtn">Yes, I'd love to</button>
+          <button class="btn btn-no" id="noBtn">No</button>
+        </div>
+      </div>
+      <div class="hint" id="hintText">&nbsp;</div>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: planner -->
+  <section class="screen" id="screen-plan">
+    <div class="card">
+      <span class="eyebrow">good choice</span>
+      <h1>Let's plan it, then.</h1>
+      <p class="sub">Pick whatever sounds like you — I'll work around it.</p>
+
+      <div class="field">
+        <label>What kind of date?</label>
+        <div class="types" id="typeGrid">
+          <div class="type-opt" data-type="Coffee">
+            <span class="emoji">☕</span>Coffee
+          </div>
+          <div class="type-opt" data-type="Dinner">
+            <span class="emoji">🍝</span>Dinner
+          </div>
+          <div class="type-opt" data-type="Movie">
+            <span class="emoji">🎬</span>Movie
+          </div>
+          <div class="type-opt" data-type="Walk">
+            <span class="emoji">🌇</span>Evening walk
+          </div>
+          <div class="type-opt" data-type="Stargazing">
+            <span class="emoji">✨</span>Stargazing
+          </div>
+          <div class="type-opt" data-type="Surprise me">
+            <span class="emoji">🎁</span>Surprise me
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>When works for you?</label>
+        <div class="row2">
+          <div>
+            <input type="date" id="dateInput">
+          </div>
+          <div>
+            <input type="time" id="timeInput">
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Anything I should know? (optional)</label>
+        <textarea id="noteInput" placeholder="e.g. I don't like spicy food, or I'm free only after 6pm..."></textarea>
+      </div>
+
+      <button class="confirm-btn" id="planContinue" disabled>Continue</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 3: summary -->
+  <section class="screen" id="screen-summary">
+    <div class="card">
+      <span class="eyebrow">it's a date</span>
+      <h1>Here's what you picked</h1>
+      <p class="sub">Send it my way and I'll take care of the rest.</p>
+
+      <div class="summary-box" id="summaryBox"></div>
+
+      <div class="send-row">
+        <a href="#" id="sendWhatsapp" class="send-whatsapp" target="_blank" rel="noopener">Send on WhatsApp</a>
+        <a href="#" id="sendEmail" class="send-email">Send by Email</a>
+      </div>
+      <div class="copied-msg" id="copiedMsg">&nbsp;</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* =========================================================
+   CONFIG — fill these in before sending the link.
+   If left blank, the WhatsApp/Email buttons will just copy
+   the message to the clipboard instead.
+   ========================================================= */
+const CONTACT = {
+  whatsappNumber: "+917378958659",   // e.g. "919876543210" (country code, no + or spaces)
+  email: "chiragpatil7378@gmail.com"             // e.g. "you@example.com"
+};
+const YOUR_NAME = "Chirag";
+/* ========================================================= */
+
+/* ---------- starfield background ---------- */
+const canvas = document.getElementById('stars');
+const ctx = canvas.getContext('2d');
+let stars = [];
+let shootingStars = [];
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const count = Math.floor((canvas.width * canvas.height) / 9000);
+  stars = Array.from({length: count}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.3 + 0.2,
+    tw: Math.random() * Math.PI * 2,
+    speed: Math.random() * 0.015 + 0.005
+  }));
+}
+window.addEventListener('resize', resize);
+resize();
+
+function maybeSpawnShootingStar(){
+  if (Math.random() < 0.004){
+    const startX = Math.random() * canvas.width * 0.6;
+    shootingStars.push({
+      x: startX, y: -10,
+      vx: 6 + Math.random()*3, vy: 3 + Math.random()*2,
+      life: 0, maxLife: 60
+    });
+  }
+}
+
+function drawFrame(){
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  for (const s of stars){
+    s.tw += s.speed;
+    const alpha = 0.4 + Math.sin(s.tw) * 0.4;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(245,243,255,${Math.max(0.1, alpha)})`;
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+  }
+  maybeSpawnShootingStar();
+  shootingStars.forEach(sh => {
+    sh.x += sh.vx; sh.y += sh.vy; sh.life++;
+    const grad = ctx.createLinearGradient(sh.x, sh.y, sh.x - sh.vx*8, sh.y - sh.vy*8);
+    grad.addColorStop(0, "rgba(255,209,102,0.9)");
+    grad.addColorStop(1, "rgba(255,209,102,0)");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sh.x, sh.y);
+    ctx.lineTo(sh.x - sh.vx*8, sh.y - sh.vy*8);
+    ctx.stroke();
+  });
+  shootingStars = shootingStars.filter(sh => sh.life < sh.maxLife && sh.y < canvas.height + 20);
+  requestAnimationFrame(drawFrame);
+}
+drawFrame();
+
+/* ---------- screen navigation ---------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ---------- the evasive No button ---------- */
+const stage = document.querySelector('.stage');
+const noBtn = document.getElementById('noBtn');
+const yesBtn = document.getElementById('yesBtn');
+const hintText = document.getElementById('hintText');
+const askHeadline = document.getElementById('askHeadline');
+
+let dodgeCount = 0;
+const hints = [
+  "Hm, the 'No' button seems a little shy.",
+  "It's getting harder to say no, isn't it?",
+  "Okay, at this point it's basically a 'yes'.",
+  "The button has accepted its fate. So should you.",
+  "Statistically, this button has never been clicked."
+];
+
+function spawnHeartPop(x, y){
+  const heart = document.createElement('span');
+  heart.className = 'heart-pop';
+  heart.textContent = ['💗','✨','💫'][Math.floor(Math.random()*3)];
+  heart.style.left = x + 'px';
+  heart.style.top = y + 'px';
+  stage.appendChild(heart);
+  setTimeout(() => heart.remove(), 900);
+}
+
+function repositionNo(){
+  const stageRect = stage.getBoundingClientRect();
+  const btnRect = noBtn.getBoundingClientRect();
+  const oldX = parseFloat(noBtn.style.left) || (stageRect.width/2 - btnRect.width/2);
+  const oldY = parseFloat(noBtn.style.top) || (stageRect.height/2 - btnRect.height/2);
+  spawnHeartPop(oldX + btnRect.width/2 - 8, oldY + btnRect.height/2 - 8);
+
+  const maxX = Math.max(0, stageRect.width - btnRect.width);
+  const maxY = Math.max(0, stageRect.height - btnRect.height);
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+  noBtn.style.left = x + 'px';
+  noBtn.style.top = y + 'px';
+  noBtn.style.transform = 'translate(0,0)';
+  noBtn.classList.remove('dodging');
+  void noBtn.offsetWidth; // restart animation
+  noBtn.classList.add('dodging');
+}
+
+function dodge(){
+  dodgeCount++;
+  repositionNo();
+  yesBtn.style.transform = `scale(${Math.min(1.5, 1 + dodgeCount * 0.045)})`;
+  const idx = Math.min(hints.length - 1, Math.floor(dodgeCount / 3));
+  hintText.textContent = hints[idx];
+}
+
+// Desktop: dodge as the cursor gets close
+stage.addEventListener('mousemove', (e) => {
+  const btnRect = noBtn.getBoundingClientRect();
+  const cx = btnRect.left + btnRect.width/2;
+  const cy = btnRect.top + btnRect.height/2;
+  const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+  if (dist < 90) dodge();
+});
+
+// Mobile / fallback: dodge on direct interaction attempts
+['click','touchstart'].forEach(evt => {
+  noBtn.addEventListener(evt, (e) => {
+    e.preventDefault();
+    dodge();
+  });
+});
+
+yesBtn.addEventListener('click', () => {
+  showScreen('screen-plan');
+});
+
+/* ---------- planner screen logic ---------- */
+let selectedType = null;
+document.querySelectorAll('.type-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.type-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    selectedType = opt.dataset.type;
+    validatePlan();
+  });
+});
+
+const dateInput = document.getElementById('dateInput');
+const timeInput = document.getElementById('timeInput');
+const noteInput = document.getElementById('noteInput');
+const planContinue = document.getElementById('planContinue');
+
+function validatePlan(){
+  planContinue.disabled = !(selectedType && dateInput.value && timeInput.value);
+}
+dateInput.addEventListener('change', validatePlan);
+timeInput.addEventListener('change', validatePlan);
+
+// set a sensible min date (today)
+const today = new Date();
+dateInput.min = today.toISOString().split('T')[0];
+
+planContinue.addEventListener('click', () => {
+  buildSummary();
+  showScreen('screen-summary');
+});
+
+/* ---------- summary + send ---------- */
+function formatDate(dstr){
+  const d = new Date(dstr + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+function formatTime(tstr){
+  const [h,m] = tstr.split(':').map(Number);
+  const d = new Date(); d.setHours(h, m);
+  return d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+}
+
+let messageText = "";
+
+function buildSummary(){
+  const dateNice = formatDate(dateInput.value);
+  const timeNice = formatTime(timeInput.value);
+  const note = noteInput.value.trim();
+
+  document.getElementById('summaryBox').innerHTML = `
+    <b>Yes</b>, to a date with ${YOUR_NAME}.<br>
+    <b>Type:</b> ${selectedType}<br>
+    <b>When:</b> ${dateNice} at ${timeNice}
+    ${note ? `<br><b>Note:</b> ${note}` : ''}
+  `;
+
+  messageText =
+`Hi ${YOUR_NAME}, it's a yes! 🙂
+Type of date: ${selectedType}
+Date: ${dateNice}
+Time: ${timeNice}${note ? `\nNote: ${note}` : ''}`;
+
+  const waLink = document.getElementById('sendWhatsapp');
+  const emailLink = document.getElementById('sendEmail');
+  const encoded = encodeURIComponent(messageText);
+
+  if (CONTACT.whatsappNumber){
+    waLink.href = `https://wa.me/${CONTACT.whatsappNumber}?text=${encoded}`;
+  } else {
+    waLink.href = "#";
+    waLink.addEventListener('click', copyFallback);
+  }
+
+  if (CONTACT.email){
+    emailLink.href = `mailto:${CONTACT.email}?subject=${encodeURIComponent("It's a yes 🙂")}&body=${encoded}`;
+  } else {
+    emailLink.href = "#";
+    emailLink.addEventListener('click', copyFallback);
+  }
+}
+
+function copyFallback(e){
+  e.preventDefault();
+  navigator.clipboard.writeText(messageText).then(() => {
+    document.getElementById('copiedMsg').textContent = "Contact details weren't set up yet — copied the message instead. Paste it wherever you'd like to send it!";
+  });
+}
+</script>
+
+</body>
+</html>
